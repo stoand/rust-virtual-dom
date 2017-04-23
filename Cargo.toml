@@ -1,0 +1,7 @@
+[package]
+authors = ["Andreas Stocker <shadowstep7@gmail.com>"]
+name = "virtual-dom"
+version = "0.1.0"
+
+[dependencies]
+webplatform = "0.4.2"
