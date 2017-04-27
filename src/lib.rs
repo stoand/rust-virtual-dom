@@ -1,8 +1,23 @@
-
+macro_rules! template_props {
+    ($key:ident=@$ds_val:ident) => (1);
+    ($key:ident=$val:expr) => (1);
+}
 
 macro_rules! template {
-    ($data_struct:expr, .$sel:ident) => ("<div class=\"".to_string() + stringify!($sel) +  "\"></div>");
-    ($data_struct:expr, .$sel:ident>$(desc:tt)*) => ("<$sel>".to_string() + template!($data_struct, .asdf) + "</$sel>");
+
+    ($ds:expr, [$( $key:ident=$val:expr)*]) => ();
+    ($ds:expr, .$sel:ident) => (1);
+
+    ($ds:expr, .$sel:ident>$($inner:tt)*) => (template!($ds, $($inner)*));
+    ($ds:expr, .$sel:ident+$($inner:tt)*) => (template!($ds, $($inner)*));
+
+    ($ds:expr, +$($inner:tt)*) => (template!($ds, $($inner)*));
+    ($ds:expr, >$($inner:tt)*) => (1);
+
+
+    ($ds:expr, $name:ident.$sel:ident) => (1);
+    ($ds:expr, $name:ident.$sel:ident>$($inner:tt)*) => (template!($ds, $($inner)*));
+
 }
 
 // ".user>(.name-container>.name>@name)+(.views>(span>t_views)+(span>@views))+(.videos>@videos)"
@@ -16,8 +31,9 @@ struct User {
 mod tests {
     #[test]
     fn template_macro() {
-        // let t = template!(User, .video>(.h2>User(user))+img[src=@url alt=@description]);
-        // assert_eq!(template!(User, .video), "<div class=\"video\"></div>");
-        assert_eq!(template!(User, .video>.h2), "<div class=\"video\"></div>");
+        let a = super::User { name: "".into(), views: 3 };
+
+        let t = template!(User, .video>div.sidebar>.asdf+a.a);
+        assert_eq!(t, 1);
     }
 }
