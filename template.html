@@ -1,0 +1,18 @@
+<div class="users" ng-repeat="user in users">
+    <div class="name-container">
+        <div class="name" ng-bind="user.name"></div>
+    </div>
+    <div class="views">
+        <span ng-translate="views"></span>
+        <span ng-bind="user.views"></span>
+    </div>
+
+    <div class="videos">
+        <div class="video" ng-repeat="video in videos">
+            <h2 ng-bind="video.title"></h2>
+            <img src="{{video.thumbnail.url}}" alt="{{video.thumbnail.description}}">
+        </div>
+    </div>
+</div>
+
+.users>(.name-container>.name>bind-name)+(.views>(span>translate-views)+(span>bind-views))+(.videos>.video>(.h2>bind-title)+(img[src=url alt=description]))
