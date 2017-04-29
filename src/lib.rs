@@ -18,8 +18,6 @@ pub enum VirtualNode<'a> {
 #[derive(Debug,PartialEq,Eq,Clone)]
 pub struct VirtualElement<'a> {
     name: &'a str,
-    id: Option<&'a str>,
-    classes: Vec<&'a str>,
     attributes: HashMap<&'a str, &'a str>,
     child_nodes: Vec<VirtualNode<'a>>,
 }
@@ -28,8 +26,6 @@ impl<'a> VirtualElement<'a> {
     fn new() -> Self {
         VirtualElement {
             name: "",
-            id: None,
-            classes: Vec::new(),
             attributes: HashMap::new(),
             child_nodes: Vec::new(),
         }
@@ -46,7 +42,7 @@ macro_rules! template {
 }
 
 macro_rules! inner_template {
-    (not_top_level, ) => (|_: &mut::VirtualElement| vec![]);
+    ($tl:ident, ) => (|_: &mut::VirtualElement| vec![]);
     (not_top_level, [$($key:ident=$val:expr)*]$($inner:tt)*) => (|el: &mut::VirtualElement| {
         $(el.attributes.insert(stringify!($key), $val);)*
         inner_template!(not_top_level, $($inner)*)(&mut el)
@@ -80,7 +76,8 @@ macro_rules! inner_template {
         let mut el_parens_additional = inner_template!(not_top_level, $($inner)*)(&mut el_parens);
 
         let mut el_remaining = ::VirtualElement::new();
-        let mut el_remaining_additional = inner_template!(not_top_level, $($inner)*)(&mut el_remaining);
+        let mut el_remaining_additional =
+            inner_template!(not_top_level, $($inner)*)(&mut el_remaining);
 
         let mut els = Vec::new();
 
@@ -93,7 +90,8 @@ macro_rules! inner_template {
     });
     (not_top_level, +$($inner:tt)*) => (|_: &mut::VirtualElement| {
         let mut el_remaining = ::VirtualElement::new();
-        let mut el_remaining_additional = inner_template!(not_top_level, $($inner)*)(&mut el_remaining);
+        let mut el_remaining_additional =
+            inner_template!(not_top_level, $($inner)*)(&mut el_remaining);
 
         let mut els = Vec::new();
 
@@ -102,11 +100,16 @@ macro_rules! inner_template {
         els
     });
     ($tl:ident, .$classes:ident$($inner:tt)*) => (|el: &mut::VirtualElement| {
-        el.classes.push(stringify!($classes));
+        let classes = if let Some(existing_classes) = el.attributes.get("class") {
+            &(existing_classes.to_string() + " " + stringify!($classes))
+        } else {
+            stringify!($classes)
+        };
+        el.attributes.insert("class", classes);
         inner_template!($tl, $($inner)*)(el)
     });
     ($tl:ident, #$id:ident$($inner:tt)*) => (|el: &mut::VirtualElement| {
-        el.id = Some(stringify!($id));
+        el.attributes.insert("id", stringify!($id));
         inner_template!($tl, $($inner)*)(el)
     });
     ($tl:ident, $name:ident$($inner:tt)*) => (|el: &mut::VirtualElement| {
@@ -123,9 +126,10 @@ macro_rules! inner_template {
 mod tests {
     #[test]
     fn template_macro() {
-        let a = template!(.video>.b+.a);
+        let a = template!(#asdf);
         let t = template!(.video>.sidebar>(.asdf+.a[href="asdf" type="asdf"]@"inner text")+.a+(.b));
-        let t1 = template!(.video>.sidebar>(.asdf+.a[href="asdf" type="asdf"]@"inner text")+.a+(.b));
+        let t1 =
+            template!(.video>.sidebar>(.asdf#a+.a[href="asdf" type="asdf"]@"inner text")+.a+(.b));
         assert_eq!(t, t1);
     }
 }
