@@ -9,17 +9,17 @@ impl<'a, T: ToString> From<T> for VirtualDom<'a> {
     }
 }
 
-#[derive(Debug,PartialEq,Eq)]
+#[derive(Debug,PartialEq,Eq,Clone)]
 pub enum VirtualNode<'a> {
     Text(String),
     Element(VirtualElement<'a>),
 }
 
-#[derive(Debug,PartialEq,Eq)]
+#[derive(Debug,PartialEq,Eq,Clone)]
 pub struct VirtualElement<'a> {
     name: &'a str,
     id: Option<&'a str>,
-    class: Vec<&'a str>,
+    classes: Vec<&'a str>,
     attributes: HashMap<&'a str, &'a str>,
     child_nodes: Vec<VirtualNode<'a>>,
 }
@@ -29,7 +29,7 @@ impl<'a> VirtualElement<'a> {
         VirtualElement {
             name: "",
             id: None,
-            class: Vec::new(),
+            classes: Vec::new(),
             attributes: HashMap::new(),
             child_nodes: Vec::new(),
         }
@@ -39,41 +39,48 @@ impl<'a> VirtualElement<'a> {
 macro_rules! template {
     ($($inner:tt)*) => ({
         let mut el = ::VirtualElement::new();
-        inner_template!($($inner)*)(&mut el);
+        // "+" is disallowed at the top level, so no additional elements will be returned
+        let _ = inner_template!(top_level, $($inner)*)(&mut el);
         el
     });
 }
 
 macro_rules! inner_template {
-    () => (|_: &mut::VirtualElement| vec![]);
-    ([$($key:ident=$val:expr)*]$($inner:tt)*) => (|el: &mut::VirtualElement| {
+    (not_top_level, ) => (|_: &mut::VirtualElement| vec![]);
+    (not_top_level, [$($key:ident=$val:expr)*]$($inner:tt)*) => (|el: &mut::VirtualElement| {
         $(el.attributes.insert(stringify!($key), $val);)*
-        inner_template!($($inner)*)(&mut el)
+        inner_template!(not_top_level, $($inner)*)(&mut el)
     });
-    (>($($inner_parens:tt)*)$($inner:tt)*) => (|el: &mut::VirtualElement| {
+    ($tl:ident, >($($inner_parens:tt)*)$($inner:tt)*) => (|el: &mut::VirtualElement| {
         let mut el_parens = ::VirtualElement::new();
-        inner_template!($($inner)*)(&mut el_parens);
+        let el_parens_additional = inner_template!(not_top_level, $($inner)*)(&mut el_parens);
         el.child_nodes.push(::VirtualNode::Element(el_parens));
+        for additional in el_parens_additional {
+            el.child_nodes.push(::VirtualNode::Element(additional));
+        }
 
         let mut el_remaining = ::VirtualElement::new();
-        inner_template!($($inner)*)(&mut el_remaining);
+        let el_remaining_additional = inner_template!(not_top_level, $($inner)*)(&mut el_remaining);
         el.child_nodes.push(::VirtualNode::Element(el_remaining));
+        for additional in el_remaining_additional {
+            el.child_nodes.push(::VirtualNode::Element(additional));
+        }
 
         Vec::<::VirtualNode>::new()
     });
-    (>$($inner:tt)*) => (|el: &mut::VirtualElement| {
+    ($tl:ident, >$($inner:tt)*) => (|el: &mut::VirtualElement| {
         let mut el_remaining = ::VirtualElement::new();
-        let el_remaining_additional = inner_template!($($inner)*)(&mut el_remaining);
+        let el_remaining_additional = inner_template!(not_top_level, $($inner)*)(&mut el_remaining);
         el.child_nodes.push(::VirtualNode::Element(el_remaining));
 
         vec![el_remaining_additional]
     });
-    (+($($inner_parens:tt)*)$($inner:tt)*) => (|_: &mut::VirtualElement| {
+    (not_top_level, +($($inner_parens:tt)*)$($inner:tt)*) => (|_: &mut::VirtualElement| {
         let mut el_parens = ::VirtualElement::new();
-        let mut el_parens_additional = inner_template!($($inner)*)(&mut el_parens);
+        let mut el_parens_additional = inner_template!(not_top_level, $($inner)*)(&mut el_parens);
 
         let mut el_remaining = ::VirtualElement::new();
-        let mut el_remaining_additional = inner_template!($($inner)*)(&mut el_remaining);
+        let mut el_remaining_additional = inner_template!(not_top_level, $($inner)*)(&mut el_remaining);
 
         let mut els = Vec::new();
 
@@ -84,9 +91,9 @@ macro_rules! inner_template {
         els.append(&mut el_remaining_additional);
         els
     });
-    (+$($inner:tt)*) => (|_: &mut::VirtualElement| {
+    (not_top_level, +$($inner:tt)*) => (|_: &mut::VirtualElement| {
         let mut el_remaining = ::VirtualElement::new();
-        let mut el_remaining_additional = inner_template!($($inner)*)(&mut el_remaining);
+        let mut el_remaining_additional = inner_template!(not_top_level, $($inner)*)(&mut el_remaining);
 
         let mut els = Vec::new();
 
@@ -94,21 +101,21 @@ macro_rules! inner_template {
         els.append(&mut el_remaining_additional);
         els
     });
-    (.$class:ident$($inner:tt)*) => (|el: &mut::VirtualElement| {
-        el.class.push(stringify!($class));
-        inner_template!($($inner)*)(el)
+    ($tl:ident, .$classes:ident$($inner:tt)*) => (|el: &mut::VirtualElement| {
+        el.classes.push(stringify!($classes));
+        inner_template!($tl, $($inner)*)(el)
     });
-    (#$id:ident$($inner:tt)*) => (|el: &mut::VirtualElement| {
+    ($tl:ident, #$id:ident$($inner:tt)*) => (|el: &mut::VirtualElement| {
         el.id = Some(stringify!($id));
-        inner_template!($($inner)*)(el)
+        inner_template!($tl, $($inner)*)(el)
     });
-    ($name:ident$($inner:tt)*) => (|el: &mut::VirtualElement| {
+    ($tl:ident, $name:ident$($inner:tt)*) => (|el: &mut::VirtualElement| {
         el.name = stringify!($name);
-        inner_template!($($inner)*)(el)
+        inner_template!($tl, $($inner)*)(el)
     });
-    ($bind:block$($inner:tt)*) => (|el: &mut::VirtualElement| {
+    ($tl:ident, $bind:block$($inner:tt)*) => (|el: &mut::VirtualElement| {
         el.child_nodes.nodes().append(&mut ::VirtualDom::from($bind).nodes());
-        inner_template!($($inner)*)(&mut el)
+        inner_template!($tl, $($inner)*)(&mut el)
     });
 }
 
@@ -116,6 +123,7 @@ macro_rules! inner_template {
 mod tests {
     #[test]
     fn template_macro() {
+        let a = template!(.video>.b+.a);
         let t = template!(.video>.sidebar>(.asdf+.a[href="asdf" type="asdf"]@"inner text")+.a+(.b));
         let t1 = template!(.video>.sidebar>(.asdf+.a[href="asdf" type="asdf"]@"inner text")+.a+(.b));
         assert_eq!(t, t1);
