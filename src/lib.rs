@@ -1,14 +1,11 @@
 macro_rules! template {
-    () => (1);
-    (($($inner:tt)*)) => (1);
-    (.$class:ident$($inner:tt)*) => (1);
-    ($name:ident.$class:ident$($inner:tt)*) => (1);
-
-    (+$($inner:tt)*) => (template!($ds, $($inner)*));
-    (>$bind:block) => (1);
-    (>$($inner:tt)*) => (1);
-    ($bind:block) => (1);
-    ([$( $key:ident=$val:expr)*]) => (1);
+    (@$bind:expr) => (1);
+    (>($($inner:tt)*)) => (template!($($inner)*));
+    (>$($inner:tt)*) => (template!($($inner)*));
+    (+$($inner:tt)*) => (template!($($inner)*));
+    ([$( $key:ident=$val:expr)*]$($inner:tt)*) => (template!($($inner)*));
+    (.$class:ident$($inner:tt)*) => (template!($($inner)*));
+    ($name:ident.$class:ident$($inner:tt)*) => (template!($($inner)*));
 }
 
 // ".user>(.name-container>.name>@name)+(.views>(span>t_views)+(span>@views))+(.videos>@videos)"
@@ -24,7 +21,7 @@ mod tests {
     fn template_macro() {
         let some = 1;
 
-        let t = template!(.video>div.sidebar>.asdf+a.a[href="asdf" type="asdf"]>{some});
+        let t = template!(.video>.sidebar>(.asdf+.a[href="asdf" type="asdf"]@some));
         assert_eq!(t, 1);
     }
 }
