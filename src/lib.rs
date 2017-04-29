@@ -24,6 +24,7 @@ struct VirtualElement<'a> {
     id: Option<&'a str>,
     class: Vec<&'a str>,
     attributes: HashMap<&'a str, &'a str>,
+    parentNode: Option<&'a VirtualElement<'a>>,
     childNodes: VirtualDom<'a>,
 }
 
@@ -34,6 +35,7 @@ impl<'a> VirtualElement<'a> {
             id: None,
             class: Vec::new(),
             attributes: HashMap::new(),
+            parentNode: None,
             childNodes: VirtualDom(Vec::new()),
         }
     }
@@ -48,20 +50,59 @@ macro_rules! template {
 }
 
 macro_rules! inner_template {
-    ([$( $key:ident=$val:expr)*]$($inner:tt)*) => (|el: &mut::VirtualElement| {
+    () => (|el: &mut::VirtualElement| {});
+    ([$($key:ident=$val:expr)*]$($inner:tt)*) => (|el: &mut::VirtualElement| {
         $(el.attributes.insert(stringify!($key), $val);)*
         inner_template!($($inner)*)(&mut el);
     });
     (@$bind:expr) => (|el: &mut::VirtualElement|
         el.childNodes.nodes().append(&mut ::VirtualDom::from($bind).nodes()));
-    (>($($inner:tt)*)$($inner1:tt)*) => (|el: &mut::VirtualElement| {
-        inner_template!($($inner)*);
+    (>($($inner_parens:tt)*)$($inner:tt)*) => (|el: &mut::VirtualElement| {
+        let mut el_parens = ::VirtualElement::new();
+        inner_template!($($inner)*)(&mut el_parens);
+        el.childNodes.nodes().push(::VirtualNode::Element(el_parens));
+
+        let mut el_remaining = ::VirtualElement::new();
+        inner_template!($($inner)*)(&mut el_remaining);
+        el.childNodes.nodes().push(::VirtualNode::Element(el_remaining));
     });
-    (>$($inner:tt)*) => (inner_template!($($inner)*));
-    (+$($inner:tt)*) => (inner_template!($($inner)*));
-    (.$class:ident$($inner:tt)*) => (inner_template!($($inner)*));
-    (#$id:ident$($inner:tt)*) => (inner_template!($($inner)*));
-    ($name:ident$($inner:tt)*) => (inner_template!($($inner)*));
+    (>$($inner:tt)*) => (|el: &mut::VirtualElement| {
+        let mut el_remaining = ::VirtualElement::new();
+        inner_template!($($inner)*)(&mut el_remaining);
+        el.childNodes.nodes().push(::VirtualNode::Element(el_remaining));
+    });
+    (+($($inner_parens:tt)*)$($inner:tt)*) => (|el: &mut::VirtualElement| {
+        let mut el_parens = ::VirtualElement::new();
+        inner_template!($($inner)*)(&mut el_parens);
+        if let Some(parentNode) = el.parentNode {
+            parentNode.childNodes.nodes().push(::VirtualNode::Element(el_parens));
+        }
+
+        let mut el_remaining = ::VirtualElement::new();
+        inner_template!($($inner)*)(&mut el_remaining);
+        if let Some(parentNode) = el.parentNode {
+            parentNode.childNodes.nodes().push(::VirtualNode::Element(el_remaining));
+        }
+    });
+    (+$($inner:tt)*) => (|el: &mut::VirtualElement| {
+        let mut el_remaining = ::VirtualElement::new();
+        inner_template!($($inner)*)(&mut el_remaining);
+        if let Some(parentNode) = el.parentNode {
+            parentNode.childNodes.nodes().push(::VirtualNode::Element(el_remaining));
+        }
+    });
+    (.$class:ident$($inner:tt)*) => (|el: &mut::VirtualElement| {
+        el.class.push(stringify!($class));
+        inner_template!($($inner)*)(el);
+    });
+    (#$id:ident$($inner:tt)*) => (|el: &mut::VirtualElement| {
+        el.id = Some(stringify!($id));
+        inner_template!($($inner)*)(el);
+    });
+    ($name:ident$($inner:tt)*) => (|el: &mut::VirtualElement| {
+        el.name = stringify!($name);
+        inner_template!($($inner)*)(el);
+    });
 }
 
 // ".user>(.name-container>.name>@name)+(.views>(span>t_views)+(span>@views))+(.videos>@videos)"
@@ -75,7 +116,7 @@ struct User {
 mod tests {
     #[test]
     fn template_macro() {
-        let t = template!(.video>.sidebar>(.asdf+.a[href="asdf" type="asdf"]@"inner text")+.a);
+        let t = template!(.video>.sidebar>(.asdf+.a[href="asdf" type="asdf"]@"inner text")+.a+(.b));
         assert_eq!(t, 1);
     }
 }
