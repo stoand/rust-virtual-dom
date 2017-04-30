@@ -2,6 +2,8 @@
 
 Asm.js / Webassembly frontend view library based on macros.
 
+[![Build Status](https://travis-ci.org/Arubaruba/rust-virtual-dom.svg?branch=master)](https://travis-ci.org/Arubaruba/rust-virtual-dom)
+
 ## Example 
 
 Source:

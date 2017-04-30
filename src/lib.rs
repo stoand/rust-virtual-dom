@@ -23,7 +23,7 @@ pub struct VirtualElement {
 }
 
 impl VirtualElement {
-    fn new() -> Self {
+    pub fn new() -> Self {
         VirtualElement {
             name: "div".to_string(),
             attributes: HashMap::new(),
