@@ -36,6 +36,7 @@ impl VirtualElement {
     }
 }
 
+#[macro_export]
 macro_rules! template {
     ($($inner:tt)*) => ({
         let mut el = ::VirtualElement::new();
@@ -45,60 +46,61 @@ macro_rules! template {
     });
 }
 
+#[macro_export]
 macro_rules! inner_template {
-    ($tl:ident, ) => (|_: &mut::VirtualElement| Vec::<::VirtualNode>::new());
-    ($tl:ident, [$($key:ident=$val:expr)*]$($inner:tt)*) => (|el: &mut::VirtualElement| {
+    ($tl:ident, ) => (|_: &mut $crate::VirtualElement| Vec::<$crate::VirtualNode>::new());
+    ($tl:ident, [$($key:ident=$val:expr)*]$($inner:tt)*) => (|el: &mut $crate::VirtualElement| {
         $(el.attributes.insert(stringify!($key).to_string(), $val.to_string());)*
         inner_template!($tl, $($inner)*)(el)
     });
-    ($tl:ident, >($($inner_parens:tt)*)$($inner:tt)*) => (|el: &mut::VirtualElement| {
+    ($tl:ident, >($($inner_parens:tt)*)$($inner:tt)*) => (|el: &mut $crate::VirtualElement| {
         let mut el_parens = ::VirtualElement::new();
         let mut el_parens_siblings = inner_template!(not_top_level, $($inner_parens)*)(&mut el_parens);
-        el.child_nodes.push(::VirtualNode::Element(el_parens));
+        el.child_nodes.push($crate::VirtualNode::Element(el_parens));
         el.child_nodes.append(&mut el_parens_siblings);
 
         let mut el_remaining_siblings = inner_template!(not_top_level, $($inner)*)(el);
         el.child_nodes.append(&mut el_remaining_siblings);
 
-        Vec::<::VirtualNode>::new()
+        Vec::<$crate::VirtualNode>::new()
     });
-    ($tl:ident, >$($inner:tt)*) => (|el: &mut::VirtualElement| {
-        let mut el_remaining = ::VirtualElement::new();
+    ($tl:ident, >$($inner:tt)*) => (|el: &mut $crate::VirtualElement| {
+        let mut el_remaining = $crate::VirtualElement::new();
         let mut el_remaining_siblings = inner_template!(not_top_level, $($inner)*)(&mut el_remaining);
-        el.child_nodes.push(::VirtualNode::Element(el_remaining));
+        el.child_nodes.push($crate::VirtualNode::Element(el_remaining));
         el.child_nodes.append(&mut el_remaining_siblings);
 
-        Vec::<::VirtualNode>::new()
+        Vec::<$crate::VirtualNode>::new()
     });
-    (not_top_level, +($($inner_parens:tt)*)$($inner:tt)*) => (|el: &mut::VirtualElement| {
-        let mut el_parens = ::VirtualElement::new();
+    (not_top_level, +($($inner_parens:tt)*)$($inner:tt)*) => (|el: &mut $crate::VirtualElement| {
+        let mut el_parens = $crate::VirtualElement::new();
         let mut el_parens_siblings = inner_template!(not_top_level, $($inner)*)(&mut el_parens);
 
         let mut el_remaining_siblings = inner_template!(not_top_level, $($inner)*)(el);
 
         let mut els = Vec::new();
 
-        els.push(::VirtualNode::Element(el_parens));
+        els.push($crate::VirtualNode::Element(el_parens));
         els.append(&mut el_parens_siblings);
         els.append(&mut el_remaining_siblings);
         els
     });
-    (not_top_level, +$($inner:tt)*) => (|_: &mut::VirtualElement| {
-        let mut el_remaining = ::VirtualElement::new();
+    (not_top_level, +$($inner:tt)*) => (|_: &mut $crate::VirtualElement| {
+        let mut el_remaining = $crate::VirtualElement::new();
         let mut el_remaining_siblings =
             inner_template!(not_top_level, $($inner)*)(&mut el_remaining);
 
         let mut els = Vec::new();
 
-        els.push(::VirtualNode::Element(el_remaining));
+        els.push($crate::VirtualNode::Element(el_remaining));
         els.append(&mut el_remaining_siblings);
         els
     });
-    ($tl:ident, {$bind:expr}$($inner:tt)*) => (|el: &mut::VirtualElement| {
-        el.child_nodes.append(&mut ::VirtualDom::from($bind).0);
+    ($tl:ident, {$bind:expr}$($inner:tt)*) => (|el: &mut $crate::VirtualElement| {
+        el.child_nodes.append(&mut $crate::VirtualDom::from($bind).0);
         inner_template!($tl, $($inner)*)(el)
     });
-    ($tl:ident, .$classes:ident$($inner:tt)*) => (|el: &mut::VirtualElement| {
+    ($tl:ident, .$classes:ident$($inner:tt)*) => (|el: &mut $crate::VirtualElement| {
         let classes = if let Some(existing_classes) = el.attributes.get("class") {
             existing_classes.to_string() + " " + stringify!($classes)
         } else {
@@ -107,11 +109,11 @@ macro_rules! inner_template {
         el.attributes.insert("class".to_string(), classes);
         inner_template!($tl, $($inner)*)(el)
     });
-    ($tl:ident, #$id:ident$($inner:tt)*) => (|el: &mut::VirtualElement| {
+    ($tl:ident, #$id:ident$($inner:tt)*) => (|el: &mut $crate::VirtualElement| {
         el.attributes.insert("id".to_string(), stringify!($id).to_string());
         inner_template!($tl, $($inner)*)(el)
     });
-    ($tl:ident, $name:ident$($inner:tt)*) => (|el: &mut::VirtualElement| {
+    ($tl:ident, $name:ident$($inner:tt)*) => (|el: &mut $crate::VirtualElement| {
         el.name = stringify!($name).to_string();
         inner_template!($tl, $($inner)*)(el)
     });
