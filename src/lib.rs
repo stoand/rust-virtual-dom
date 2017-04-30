@@ -1,6 +1,10 @@
+
+#[macro_use]
+extern crate serde_derive;
+
 use std::collections::HashMap;
 
-#[derive(Debug,PartialEq,Eq,Clone)]
+#[derive(Debug,PartialEq,Eq,Clone,Serialize,Deserialize)]
 pub struct VirtualDom(Vec<VirtualNode>);
 
 impl<'a, T: ToString> From<T> for VirtualDom {
@@ -9,13 +13,13 @@ impl<'a, T: ToString> From<T> for VirtualDom {
     }
 }
 
-#[derive(Debug,PartialEq,Eq,Clone)]
+#[derive(Debug,PartialEq,Eq,Clone,Serialize,Deserialize)]
 pub enum VirtualNode {
     Text(String),
     Element(VirtualElement),
 }
 
-#[derive(Debug,PartialEq,Eq,Clone)]
+#[derive(Debug,PartialEq,Eq,Clone,Serialize,Deserialize)]
 pub struct VirtualElement {
     name: String,
     attributes: HashMap<String, String>,
