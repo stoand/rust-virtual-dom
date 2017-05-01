@@ -1,10 +1,14 @@
+#[macro_use]
+extern crate stdweb;
+
 pub mod template;
+pub mod render;
 
 use std::collections::HashMap;
 use std::fmt;
 
 #[derive(Debug,PartialEq,Eq,Clone)]
-pub struct VirtualDom(Vec<VirtualNode>);
+pub struct VirtualDom(pub Vec<VirtualNode>);
 
 impl<'a, T: ToString> From<T> for VirtualDom {
     fn from(s: T) -> VirtualDom {
@@ -20,9 +24,9 @@ pub enum VirtualNode {
 
 #[derive(Debug,PartialEq,Eq,Clone)]
 pub struct VirtualElement {
-    name: String,
-    attributes: HashMap<String, String>,
-    child_nodes: Vec<VirtualNode>,
+    pub name: String,
+    pub attributes: HashMap<String, String>,
+    pub child_nodes: Vec<VirtualNode>,
 }
 
 impl VirtualElement {

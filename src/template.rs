@@ -2,7 +2,7 @@
 macro_rules! template {
     ($($inner:tt)*) => ({
         let mut el = $crate::VirtualElement::new();
-        // "+" is disallowed at the top level, so no siblings elements will be returned
+        // "+" is disallowed at the top level, so no sibling elements will be returned
         let _ = inner_template!(top_level, $($inner)*)(&mut el);
         el
     });
